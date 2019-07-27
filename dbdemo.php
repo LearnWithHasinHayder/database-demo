@@ -95,6 +95,18 @@ add_action( 'admin_menu', function () {
 
 function dbdemo_admin_page() {
 	global $wpdb;
+	if ( isset( $_GET['pid'] ) ) {
+		if ( ! isset( $_GET['n'] ) || ! wp_verify_nonce( $_GET['n'], "dbdemo_edit" ) ) {
+			wp_die( __( "Sorry you are not authorized to do this", "database-demo" ) );
+		}
+
+		if ( isset( $_GET['action'] ) && $_GET['action'] == 'delete' ) {
+			$wpdb->delete( "{$wpdb->prefix}persons", [ 'id' => sanitize_key( $_GET['pid'] ) ] );
+			$_GET['pid'] = null;
+		}
+	}
+
+
 	echo '<h2>DB Demo</h2>';
 	$id = $_GET['pid'] ?? 0;
 	$id = sanitize_key( $id );
@@ -149,11 +161,11 @@ function dbdemo_admin_page() {
         <div class="form_box_header">
 			<?php _e( 'Users', 'database-demo' ) ?>
         </div>
-        <div class="form_box_content" >
+        <div class="form_box_content">
 			<?php
 			global $wpdb;
 			$dbdemo_users = $wpdb->get_results( "SELECT id, name, email FROM {$wpdb->prefix}persons ORDER BY id DESC", ARRAY_A );
-			$dbtu         = new DBTableUsers($dbdemo_users);
+			$dbtu         = new DBTableUsers( $dbdemo_users );
 			$dbtu->prepare_items();
 			$dbtu->display();
 			?>
@@ -174,7 +186,8 @@ add_action( 'admin_post_dbdemo_add_record', function () {
 
 		if ( $id ) {
 			$wpdb->update( "{$wpdb->prefix}persons", [ 'name' => $name, 'email' => $email ], [ 'id' => $id ] );
-			wp_redirect( admin_url( 'admin.php?page=dbdemo&pid=' . $id ) );
+			$nonce = wp_create_nonce( "dbdemo_edit" );
+			wp_redirect( admin_url( 'admin.php?page=dbdemo&pid=' ) . $id . "&n={$nonce}" );
 		} else {
 			$wpdb->insert( "{$wpdb->prefix}persons", [ 'name' => $name, 'email' => $email ] );
 			/*$new_id = $wpdb->insert_id;
